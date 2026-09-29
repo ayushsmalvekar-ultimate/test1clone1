@@ -1,0 +1,63 @@
+name: pytest
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      # The test suite runs the real sandbox runners for each language, so pin the
+      # toolchains instead of relying on whatever the runner image happens to ship.
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+          cache: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Toolchain versions
+        run: |
+          python --version
+          node --version
+          go version
+          ruby --version
+          rustc --version
+          gcc --version | head -1
+          javac -version 2>&1 || true
+
+      # Gemini and GitHub calls are mocked; compilers and test runners are real.
+      # -ra lists skipped tests with their reason (e.g. a missing toolchain).
+      - name: Run tests
+        run: python -m pytest -q --tb=short -ra
